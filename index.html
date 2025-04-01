@@ -109,11 +109,10 @@
       margin-top: 10px;
     }
     @media (min-width: 768px) {
-      body {
-        flex-direction: row;
-        justify-content: center;
-        align-items: flex-start;
-      }
+  #game-container, #history-container {
+    max-width: 600px;
+  }
+}
       #history-container {
         margin-right: 40px;
         margin-bottom: 0;
@@ -122,10 +121,6 @@
   </style>
 </head>
 <body>
-
-<div id="history-container">
-  <h2>Game History</h2>
-  <div id="history-log"></div>
   <p id="daily-score">Daily Total: 0 points / 0 of 10 games played</p>
   <p id="streak-stats"></p>
   <button id="clear-history" onclick="clearHistory()">Clear History</button>
@@ -172,6 +167,14 @@
 <footer>
   <p style="margin-top: 20px; color: #555;">Developed by Lucy</p>
 </footer>
+</div>
+
+<div id="history-container">
+  <h2>Game History</h2>
+  <div id="history-log"></div>
+  <p id="daily-score">Daily Total: 0 points / 0 of 10 games played</p>
+  <p id="streak-stats"></p>
+  <button id="clear-history" onclick="clearHistory()">Clear History</button>
 </div>
 
 <script>
@@ -226,6 +229,7 @@ let gamesPlayed = 0;
 let dailyScore = 0;
 const maxGamesPerDay = 10;
 let gameSubmitted = false;
+let hasChosenLetters = false;
 
 function startGame() {
   if (gamesPlayed >= maxGamesPerDay) {
@@ -236,6 +240,9 @@ function startGame() {
   document.getElementById('game-interface').style.display = 'block';
   document.getElementById('start-btn').style.display = 'none';
   document.getElementById('summary-panel').style.display = 'none';
+  document.getElementById('vowel-btn').disabled = false;
+  document.getElementById('consonant-btn').disabled = false;
+  hasChosenLetters = false;
   resetGame();
 }
 
@@ -251,6 +258,7 @@ function chooseConsonant() {
 }
 
 function showLetterOptions(pool, count) {
+  if (hasChosenLetters) return; // prevent re-selecting
   const container = document.getElementById('choices-container');
   container.innerHTML = '';
   document.getElementById('letter-options').style.display = 'block';
@@ -266,6 +274,10 @@ function showLetterOptions(pool, count) {
     btn.onclick = () => selectLetter(letter);
     container.appendChild(btn);
   });
+
+  document.getElementById('vowel-btn').disabled = true;
+  document.getElementById('consonant-btn').disabled = true;
+  hasChosenLetters = true;
 }
 
 function selectLetter(letter) {
@@ -353,6 +365,7 @@ function advanceRound() {
 function resetGame() {
   selectedLetters = [];
   gameSubmitted = false;
+  hasChosenLetters = false;
   document.getElementById('selected-letters').innerText = 'None';
   document.getElementById('word-input').value = '';
   document.getElementById('score').innerText = '0';
@@ -361,6 +374,9 @@ function resetGame() {
   document.getElementById('valid-word').className = '';
   document.getElementById('submit-btn').disabled = false;
   document.getElementById('new-game-btn').style.display = 'none';
+  document.getElementById('next-game-btn').style.display = 'none';
+  document.getElementById('vowel-btn').disabled = false;
+  document.getElementById('consonant-btn').disabled = false;
 }
 </script>
 

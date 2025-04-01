@@ -26,6 +26,7 @@
       padding: 20px;
       border-radius: 15px;
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      position: relative;
     }
     h1 {
       color: #004080;
@@ -41,7 +42,7 @@
       color: white;
       transition: background-color 0.3s;
     }
-    button:hover {
+    button:hover:enabled {
       background-color: #005f99;
     }
     .letter-choice {
@@ -89,260 +90,215 @@
       padding: 8px;
       border-bottom: 1px solid #ccc;
     }
-    .highlight {
-      background-color: #d4edda;
-      border-left: 4px solid #28a745;
-    }
     #daily-score {
       margin-top: 15px;
       font-weight: bold;
       color: #004080;
     }
-    #streak-stats {
-      font-size: 0.85em;
+    .instructions {
+      font-size: 0.8em;
       color: #666;
-      margin-top: 10px;
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
 
-<div id="history-container">
-  <h2>Game History</h2>
-  <div id="history-log"></div>
-  <p id="daily-score">Daily Total: 0 points / 0 of 10 games played</p>
-  <p id="streak-stats"></p>
-  <button id="clear-history" onclick="clearHistory()">Clear History</button>
-</div>
-
-<div id="game-container">
-  <div id="instructions" style="margin-bottom: 15px; background-color: #eef7ff; padding: 10px; border-radius: 10px; border-left: 5px solid #007acc;">
-    <strong>Instructions:</strong>
-    <p>Build a valid English word by selecting letters one at a time. Each round, choose either a vowel (3 options) or a consonant (7 options). Special letters like Q, X, Z are worth double points and shown in red. You can play up to 10 games per day. Submit your best word each round to earn the highest score!</p>
+  <div id="history-container">
+    <h2>Game History</h2>
+    <div id="history-log"></div>
+    <p id="daily-score">Daily Total: 0 / 10 games played</p>
   </div>
-  <h1>WordBuilder Game</h1>
 
-  <button id="start-btn" onclick="startGame()">Start Game</button>
+  <div id="game-container">
+    <h1>WordBuilder Game</h1>
 
-  <div id="game-interface" style="display: none;">
-    <button id="vowel-btn" onclick="chooseVowel()">Vowel</button>
-    <button id="consonant-btn" onclick="chooseConsonant()">Consonant</button>
+    <button id="start-btn" onclick="startGame()">Start Game</button>
 
-    <div id="letter-options" style="display: none;">
-      <p>Choose a letter:</p>
-      <div id="choices-container"></div>
+    <div id="game-interface" style="display: none;">
+      <button id="vowel-btn" onclick="chooseVowel()">Vowel</button>
+      <button id="consonant-btn" onclick="chooseConsonant()">Consonant</button>
+
+      <div id="letter-options" style="display: none;">
+        <p>Choose a letter:</p>
+        <div id="choices-container"></div>
+      </div>
+
+      <p><strong>Selected Letters:</strong> <span id="selected-letters">None</span></p>
+
+      <input type="text" id="word-input" placeholder="Formed word" readonly>
+      <button id="submit-btn" onclick="submitWord()">Submit Word</button>
+
+      <p><strong>Score:</strong> <span id="score">0</span></p>
+      <div id="score-details" class="score-breakdown"></div>
+      <p><strong>Word Status:</strong> <span id="valid-word">None</span></p>
+
+      <button onclick="resetGame()">Next Game</button>
     </div>
 
-    <p><strong>Selected Letters:</strong> <span id="selected-letters">None</span></p>
+    <div class="instructions">
+      <p>Instructions: Click "Start Game" to begin. Choose vowels and consonants to form a word. Submit your word to earn points. Max 10 games per day.</p>
+    </div>
 
-    <input type="text" id="word-input" placeholder="Formed word" readonly>
-    <button id="submit-btn" onclick="submitWord()">Submit Word</button>
-    <button id="new-game-btn" onclick="resetGame()" style="display:none">New Game</button>
-
-    <p><strong>Score:</strong> <span id="score">0</span></p>
-    <div id="score-details" class="score-breakdown"></div>
-    <p><strong>Word Status:</strong> <span id="valid-word">None</span></p>
+    <footer>
+      <p style="margin-top: 20px; color: #555;">Developed by Lucy</p>
+    </footer>
   </div>
 
-  <div id="summary-panel" style="display: none; background-color: #e0ffe0; border: 2px solid #28a745; padding: 20px; text-align: center; margin-top: 20px; border-radius: 10px; animation: fadeIn 1s ease-in-out;">
-    <h2>🎉 Game Over 🎉</h2>
-    <p>Your Total Score: <strong id="final-score"></strong></p>
-    <p>Thanks for playing! Check your game history on the left.</p>
-    <div style="font-size: 2em;">✨🎯🏆</div>
-  </div>
+  <script>
+    const vowels = ["A", "E", "I", "O", "U"];
+    const commonConsonants = ["B", "C", "D", "F", "G", "H", "L", "M", "N", "R", "S", "T", "V", "Y"];
+    const bonusConsonants = ["K", "P", "W", "Q", "X", "Z", "J"];
 
-  <footer>
-    <p style="margin-top: 20px; color: #555;">Developed by Lucy</p>
-  </footer>
-</div>
+    let selectedLetters = [];
+    let gamesPlayed = 0;
+    let dailyScore = 0;
+    const maxGamesPerDay = 10;
+    let gameSubmitted = false;
+    let letterChosenThisRound = false;
 
-<script>
-let streak = 0;
-let lastPlayed = localStorage.getItem('lastPlayedDate');
-const today = new Date().toISOString().split('T')[0];
-
-if (lastPlayed && lastPlayed !== today) {
-  streak = 0;
-} else {
-  streak = parseInt(localStorage.getItem('streak') || '0');
-}
-
-function updateStreakDisplay() {
-  document.getElementById('streak-stats').innerText = `Streak: ${streak} days`;
-}
-
-window.onload = function () {
-  const saved = localStorage.getItem('wordbuilderHistory');
-  if (saved) {
-    const { historyHTML, score, played } = JSON.parse(saved);
-    document.getElementById('history-log').innerHTML = historyHTML;
-    dailyScore = score;
-    gamesPlayed = played;
-    updateDailyScore();
-  }
-  updateStreakDisplay();
-}
-
-function saveProgress() {
-  const data = {
-    historyHTML: document.getElementById('history-log').innerHTML,
-    score: dailyScore,
-    played: gamesPlayed
-  };
-  localStorage.setItem('wordbuilderHistory', JSON.stringify(data));
-  localStorage.setItem('lastPlayedDate', today);
-  localStorage.setItem('streak', streak.toString());
-}
-
-function clearHistory() {
-  localStorage.clear();
-  document.getElementById('history-log').innerHTML = '';
-  document.getElementById('daily-score').innerText = 'Daily Total: 0 points / 0 of 10 games played';
-  document.getElementById('final-score').innerText = '';
-  document.getElementById('streak-stats').innerText = '';
-  location.reload();
-}
-
-let selectedLetters = [];
-let gamesPlayed = 0;
-let dailyScore = 0;
-const maxGamesPerDay = 10;
-let gameSubmitted = false;
-
-function startGame() {
-  if (gamesPlayed >= maxGamesPerDay) {
-    alert("You have reached the maximum of 10 games for today.");
-    return;
-  }
-  document.getElementById('history-container').style.display = 'block';
-  document.getElementById('game-interface').style.display = 'block';
-  document.getElementById('start-btn').style.display = 'none';
-  document.getElementById('summary-panel').style.display = 'none';
-  resetGame();
-}
-
-function chooseVowel() {
-  showLetterOptions(["A", "E", "I", "O", "U"], 3);
-}
-
-function chooseConsonant() {
-  const common = ["B", "C", "D", "F", "G", "H", "L", "M", "N", "R", "S", "T", "V", "Y"];
-  const bonus = ["K", "P", "W", "Q", "X", "Z", "J"];
-  const pool = [...common, ...common, ...bonus];
-  showLetterOptions(pool, 7);
-}
-
-function showLetterOptions(pool, count) {
-  const container = document.getElementById('choices-container');
-  container.innerHTML = '';
-  document.getElementById('letter-options').style.display = 'block';
-
-  const options = [...new Set(pool.sort(() => 0.5 - Math.random()))].slice(0, count);
-  options.forEach(letter => {
-    const btn = document.createElement('button');
-    btn.className = 'letter-choice';
-    if (["K", "P", "W", "Q", "X", "Z", "J"].includes(letter)) {
-      btn.classList.add('special-letter');
-    }
-    btn.textContent = letter;
-    btn.onclick = () => selectLetter(letter);
-    container.appendChild(btn);
-  });
-}
-
-function selectLetter(letter) {
-  selectedLetters.push(letter);
-  updateDisplay();
-  document.getElementById('letter-options').style.display = 'none';
-}
-
-function updateDisplay() {
-  document.getElementById('selected-letters').innerText = selectedLetters.join(' , ');
-  document.getElementById('word-input').value = selectedLetters.join('');
-}
-
-function submitWord() {
-  if (gameSubmitted) return;
-  const word = selectedLetters.join('');
-  if (!word) return alert('Please select letters first!');
-  gameSubmitted = true;
-  document.getElementById('submit-btn').disabled = true;
-  validateWord(word);
-}
-
-function validateWord(word) {
-  fetch(`https://api.datamuse.com/words?sp=${word.toLowerCase()}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.length && data[0].word === word.toLowerCase()) {
-        calculateScore(word);
-      } else {
-        document.getElementById('valid-word').innerText = 'Invalid';
-        document.getElementById('valid-word').className = 'invalid-feedback';
-        logHistory(word, 0, false);
-        advanceRound();
+    function startGame() {
+      if (gamesPlayed >= maxGamesPerDay) {
+        alert("You have reached the maximum of 10 games for today.");
+        return;
       }
-    })
-    .catch(err => console.error('Error validating word.'));
-}
+      document.getElementById('history-container').style.display = 'block';
+      document.getElementById('game-interface').style.display = 'block';
+      document.getElementById('start-btn').style.display = 'none';
+      resetGame();
+    }
 
-function calculateScore(word) {
-  let score = 0;
-  let breakdown = [];
-  let bonusLetters = ["K", "P", "W", "Q", "X", "Z", "J"];
+    function chooseVowel() {
+      if (letterChosenThisRound) return;
+      showLetterOptions(vowels, 3);
+      disableLetterButtons();
+    }
 
-  for (let letter of word.toUpperCase()) {
-    const points = bonusLetters.includes(letter) ? 2 : 1;
-    breakdown.push(`${letter}: ${points}pt`);
-    score += points;
-  }
+    function chooseConsonant() {
+      if (letterChosenThisRound) return;
+      let pool = [...commonConsonants, ...commonConsonants, ...bonusConsonants];
+      showLetterOptions(pool, 7);
+      disableLetterButtons();
+    }
 
-  document.getElementById('score').innerText = score;
-  document.getElementById('score-details').innerText = `Breakdown: ${breakdown.join(', ')}`;
-  document.getElementById('valid-word').innerText = 'Valid! 🎉';
-  document.getElementById('valid-word').className = 'valid-feedback';
-  dailyScore += score;
-  logHistory(word, score, true);
-  advanceRound();
-}
+    function disableLetterButtons() {
+      document.getElementById('vowel-btn').disabled = true;
+      document.getElementById('consonant-btn').disabled = true;
+      letterChosenThisRound = true;
+    }
 
-function logHistory(word, score, valid) {
-  const div = document.createElement('div');
-  div.className = 'history-entry' + (valid ? ' highlight' : '');
-  div.innerText = `Word: ${word}
-Status: ${valid ? 'Valid' : 'Invalid'}
-Score: ${score}`;
-  document.getElementById('history-log').prepend(div);
-}
+    function enableLetterButtons() {
+      document.getElementById('vowel-btn').disabled = false;
+      document.getElementById('consonant-btn').disabled = false;
+      letterChosenThisRound = false;
+    }
 
-function updateDailyScore() {
-  document.getElementById('daily-score').innerHTML = `Daily Total: <strong>${dailyScore} points</strong><br>Games Played: ${gamesPlayed} of ${maxGamesPerDay}`;
-}
+    function showLetterOptions(pool, count) {
+      const choicesContainer = document.getElementById('choices-container');
+      choicesContainer.innerHTML = '';
+      document.getElementById('letter-options').style.display = 'block';
 
-function advanceRound() {
-  gamesPlayed++;
-  updateDailyScore();
-  saveProgress();
-  if (gamesPlayed >= maxGamesPerDay) {
-    document.getElementById('game-interface').style.display = 'none';
-    document.getElementById('summary-panel').style.display = 'block';
-    document.getElementById('final-score').innerText = dailyScore;
-  }
-}
+      const uniqueLetters = [...new Set(pool.sort(() => 0.5 - Math.random()))].slice(0, count);
 
-function resetGame() {
-  selectedLetters = [];
-  gameSubmitted = false;
-  document.getElementById('selected-letters').innerText = 'None';
-  document.getElementById('word-input').value = '';
-  document.getElementById('score').innerText = '0';
-  document.getElementById('score-details').innerText = '';
-  document.getElementById('valid-word').innerText = 'None';
-  document.getElementById('valid-word').className = '';
-  document.getElementById('submit-btn').disabled = false;
-  document.getElementById('new-game-btn').style.display = 'none';
-}
-</script>
+      uniqueLetters.forEach(letter => {
+        const button = document.createElement('button');
+        button.className = 'letter-choice';
+        if (bonusConsonants.includes(letter)) button.classList.add('special-letter');
+        button.textContent = letter;
+        button.onclick = () => selectLetter(letter);
+        choicesContainer.appendChild(button);
+      });
+    }
+
+    function selectLetter(letter) {
+      selectedLetters.push(letter);
+      updateDisplay();
+      document.getElementById('letter-options').style.display = 'none';
+      enableLetterButtons();
+    }
+
+    function updateDisplay() {
+      document.getElementById('selected-letters').innerText = selectedLetters.join(' , ');
+      document.getElementById('word-input').value = selectedLetters.join('');
+    }
+
+    function submitWord() {
+      if (gameSubmitted) return;
+      const word = selectedLetters.join('');
+      if (!word) return alert('Please select letters first!');
+      gameSubmitted = true;
+      document.getElementById('submit-btn').disabled = true;
+      validateWord(word);
+    }
+
+    function validateWord(word) {
+      fetch(`https://api.datamuse.com/words?sp=${word.toLowerCase()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.length && data[0].word === word.toLowerCase()) {
+            calculateScore(word);
+          } else {
+            document.getElementById('valid-word').innerText = 'Invalid';
+            document.getElementById('valid-word').className = 'invalid-feedback';
+            logHistory(word, 0, false);
+            gamesPlayed++;
+            updateDailyScore();
+          }
+        })
+        .catch(err => console.error('Error validating word.'));
+    }
+
+    function calculateScore(word) {
+      let score = 0;
+      let breakdown = [];
+      let usedBonus = false;
+
+      for (let letter of word.toUpperCase()) {
+        const points = bonusConsonants.includes(letter) ? 2 : 1;
+        if (points === 2) usedBonus = true;
+        breakdown.push(`${letter}: ${points}pt`);
+        score += points;
+      }
+
+      document.getElementById('score').innerText = score;
+      document.getElementById('score-details').innerText = `Breakdown: ${breakdown.join(', ')}` + (usedBonus ? ' (2x bonus applied)' : '');
+      document.getElementById('valid-word').innerText = 'Valid! 🎉';
+      document.getElementById('valid-word').className = 'valid-feedback';
+
+      gamesPlayed++;
+      dailyScore += score;
+      updateDailyScore();
+      logHistory(word, score, true);
+    }
+
+    function updateDailyScore() {
+      document.getElementById('daily-score').innerText = `Daily Total: ${dailyScore} points / ${gamesPlayed} of ${maxGamesPerDay} games played`;
+    }
+
+    function logHistory(word, score, valid) {
+      const historyEntry = document.createElement('div');
+      historyEntry.className = 'history-entry';
+      if (valid) historyEntry.style.backgroundColor = '#e0ffe0';
+      historyEntry.innerText = `Word: ${word}\nStatus: ${valid ? 'Valid' : 'Invalid'}\nScore: ${score}`;
+      document.getElementById('history-log').prepend(historyEntry);
+    }
+
+    function resetGame() {
+      selectedLetters = [];
+      gameSubmitted = false;
+      document.getElementById('selected-letters').innerText = 'None';
+      document.getElementById('word-input').value = '';
+      document.getElementById('score').innerText = '0';
+      document.getElementById('score-details').innerText = '';
+      document.getElementById('valid-word').innerText = 'None';
+      document.getElementById('valid-word').className = '';
+      document.getElementById('submit-btn').disabled = false;
+      enableLetterButtons();
+    }
+  </script>
 
 </body>
 </html>
